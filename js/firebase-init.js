@@ -27,7 +27,8 @@ export function initFirebase() {
   }
   if (!config || !config.apiKey) config = DEFAULT_CONFIG;
   if (!config.apiKey || !config.projectId) return false;
-    
+
+  try {
     // Only init once
     if (!firebase.apps.length) {
       firebase.initializeApp(config);
