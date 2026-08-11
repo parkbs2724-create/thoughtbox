@@ -2,6 +2,7 @@ import * as Storage from './storage.js';
 import * as GPT from './gpt.js';
 import * as MindMap from './mindmap.js';
 import * as Utils from './utils.js';
+import * as FirebaseInit from './firebase-init.js';
 
 let els = {};
 let state = {
@@ -32,7 +33,58 @@ function init() {
     MindMap.updateTheme(true);
   }
   
+  // Initialize Firebase if configured
+  const firebaseConfigured = FirebaseInit.initFirebase();
+  if (firebaseConfigured) {
+    setupAuth();
+  }
+
+  // Load saved Firebase config into settings textarea
+  const fbConfig = FirebaseInit.getFirebaseConfig();
+  if (fbConfig && els.firebaseConfigInput) {
+    els.firebaseConfigInput.value = JSON.stringify(fbConfig, null, 2);
+  }
+  
   renderAll();
+}
+
+function setupAuth() {
+  FirebaseInit.onAuthChange(async (user) => {
+    if (user) {
+      // User logged in
+      els.loginBtn.style.display = 'none';
+      els.userInfo.style.display = 'flex';
+      els.userAvatar.src = user.photoURL || '';
+      els.userName.textContent = user.displayName || user.email;
+      els.syncStatus.textContent = '☁️ 동기화';
+      els.syncStatus.style.color = 'var(--cat-todo)';
+      
+      // Switch to cloud mode
+      Storage.setCloudMode(user.uid);
+      await Storage.loadFromCloud();
+      
+      // Migrate local data if any
+      const localCount = parseInt(localStorage.getItem('thoughtbox_migrated') || '0');
+      if (localCount === 0) {
+        const result = await Storage.migrateLocalToCloud();
+        if (result.migrated > 0) {
+          localStorage.setItem('thoughtbox_migrated', '1');
+          Utils.showToast(`${result.migrated}개의 로컬 생각을 클라우드로 이동했습니다!`, 'success');
+        }
+      }
+      
+      renderAll();
+    } else {
+      // User logged out
+      els.loginBtn.style.display = 'flex';
+      els.userInfo.style.display = 'none';
+      els.syncStatus.textContent = '💾 로컬';
+      els.syncStatus.style.color = 'var(--text-tertiary)';
+      
+      Storage.setLocalMode();
+      renderAll();
+    }
+  });
 }
 
 function cacheElements() {
@@ -61,6 +113,14 @@ function cacheElements() {
     exportBtn: document.getElementById('exportBtn'),
     importBtn: document.getElementById('importBtn'),
     importFile: document.getElementById('importFile'),
+    loginBtn: document.getElementById('loginBtn'),
+    userInfo: document.getElementById('userInfo'),
+    userAvatar: document.getElementById('userAvatar'),
+    userName: document.getElementById('userName'),
+    logoutBtn: document.getElementById('logoutBtn'),
+    syncStatus: document.getElementById('syncStatus'),
+    firebaseConfigInput: document.getElementById('firebaseConfigInput'),
+    saveFirebaseConfigBtn: document.getElementById('saveFirebaseConfigBtn'),
     detailModal: document.getElementById('detailModal'),
     detailCategory: document.getElementById('detailCategory'),
     detailContent: document.getElementById('detailContent'),
@@ -163,6 +223,45 @@ function bindEvents() {
   els.exportBtn.addEventListener('click', exportData);
   els.importBtn.addEventListener('click', () => els.importFile.click());
   els.importFile.addEventListener('change', importData);
+
+  // Login/Logout
+  if (els.loginBtn) {
+    els.loginBtn.addEventListener('click', async () => {
+      try {
+        await FirebaseInit.signInWithGoogle();
+        Utils.showToast('로그인 성공!', 'success');
+      } catch (e) {
+        if (e.code !== 'auth/popup-closed-by-user') {
+          Utils.showToast('로그인 실패: ' + e.message, 'error');
+        }
+      }
+    });
+  }
+
+  if (els.logoutBtn) {
+    els.logoutBtn.addEventListener('click', async () => {
+      await FirebaseInit.signOut();
+      Utils.showToast('로그아웃 되었습니다.', 'info');
+    });
+  }
+
+  // Firebase config save
+  if (els.saveFirebaseConfigBtn) {
+    els.saveFirebaseConfigBtn.addEventListener('click', () => {
+      try {
+        const configStr = els.firebaseConfigInput.value.trim();
+        const config = JSON.parse(configStr);
+        if (!config.apiKey || !config.projectId) {
+          Utils.showToast('apiKey와 projectId는 필수입니다.', 'error');
+          return;
+        }
+        FirebaseInit.saveFirebaseConfig(config);
+        Utils.showToast('Firebase 설정이 저장되었습니다. 페이지를 새로고침하세요.', 'success');
+      } catch (e) {
+        Utils.showToast('올바른 JSON 형식이 아닙니다.', 'error');
+      }
+    });
+  }
 
   // Mobile Nav Tabs
   if (els.mobileNav) {

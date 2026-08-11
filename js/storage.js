@@ -1,4 +1,5 @@
 import { generateId } from './utils.js';
+import { getDb, getCurrentUser } from './firebase-init.js';
 
 const STORAGE_KEYS = {
   THOUGHTS: 'thoughtbox_thoughts',
@@ -12,30 +13,101 @@ const DEFAULT_SETTINGS = {
   theme: 'dark'
 };
 
+let currentMode = 'local';
+let cloudUserId = null;
+let thoughtCache = [];
+
 // Internal helpers
-function loadThoughts() {
+function loadLocalThoughts() {
   try {
     const data = localStorage.getItem(STORAGE_KEYS.THOUGHTS);
     return data ? JSON.parse(data) : [];
   } catch (e) {
-    console.error('Failed to load thoughts:', e);
+    console.error('Failed to load local thoughts:', e);
     return [];
   }
 }
 
-function saveThoughts(thoughts) {
+function saveLocalThoughts(thoughts) {
   try {
     localStorage.setItem(STORAGE_KEYS.THOUGHTS, JSON.stringify(thoughts));
     return true;
   } catch (e) {
-    console.error('Failed to save thoughts:', e);
+    console.error('Failed to save local thoughts:', e);
     return false;
+  }
+}
+
+function getActiveThoughts() {
+  if (currentMode === 'cloud') {
+    return thoughtCache;
+  }
+  return loadLocalThoughts();
+}
+
+function setActiveThoughts(thoughts) {
+  if (currentMode === 'cloud') {
+    thoughtCache = thoughts;
+  } else {
+    saveLocalThoughts(thoughts);
+  }
+}
+
+// New Cloud Exports
+export function setCloudMode(userId) {
+  currentMode = 'cloud';
+  cloudUserId = userId;
+}
+
+export function setLocalMode() {
+  currentMode = 'local';
+  cloudUserId = null;
+  thoughtCache = [];
+}
+
+export async function migrateLocalToCloud() {
+  if (currentMode !== 'cloud' || !cloudUserId) return { migrated: 0 };
+  const db = getDb();
+  if (!db) return { migrated: 0 };
+
+  const localThoughts = loadLocalThoughts();
+  if (localThoughts.length === 0) return { migrated: 0 };
+
+  const batch = db.batch();
+  let count = 0;
+
+  for (const thought of localThoughts) {
+    const docRef = db.collection('users').doc(cloudUserId).collection('thoughts').doc(thought.id);
+    batch.set(docRef, thought);
+    count++;
+  }
+
+  try {
+    await batch.commit();
+    return { migrated: count };
+  } catch (e) {
+    console.error('Migration failed:', e);
+    return { migrated: 0 };
+  }
+}
+
+export async function loadFromCloud() {
+  if (currentMode !== 'cloud' || !cloudUserId) return;
+  const db = getDb();
+  if (!db) return;
+
+  try {
+    const snapshot = await db.collection('users').doc(cloudUserId).collection('thoughts').get();
+    thoughtCache = snapshot.docs.map(doc => doc.data());
+  } catch (e) {
+    console.error('Failed to load from cloud:', e);
+    thoughtCache = [];
   }
 }
 
 // Save a new thought
 export function saveThought(thought) {
-  const thoughts = loadThoughts();
+  const thoughts = getActiveThoughts();
   const now = new Date().toISOString();
   
   const newThought = {
@@ -50,25 +122,34 @@ export function saveThought(thought) {
   };
 
   thoughts.push(newThought);
-  saveThoughts(thoughts);
+  setActiveThoughts(thoughts);
+
+  if (currentMode === 'cloud' && cloudUserId) {
+    const db = getDb();
+    if (db) {
+      db.collection('users').doc(cloudUserId).collection('thoughts').doc(newThought.id).set(newThought)
+        .catch(e => console.error('Failed to save to cloud:', e));
+    }
+  }
+
   return newThought;
 }
 
 // Get all thoughts (sorted by createdAt desc)
 export function getAllThoughts() {
-  const thoughts = loadThoughts();
-  return thoughts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const thoughts = getActiveThoughts();
+  return [...thoughts].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
 // Get a single thought by ID
 export function getThoughtById(id) {
-  const thoughts = loadThoughts();
+  const thoughts = getActiveThoughts();
   return thoughts.find(t => t.id === id) || null;
 }
 
 // Update a thought (partial update)
 export function updateThought(id, updates) {
-  const thoughts = loadThoughts();
+  const thoughts = getActiveThoughts();
   const index = thoughts.findIndex(t => t.id === id);
   
   if (index === -1) return null;
@@ -80,13 +161,24 @@ export function updateThought(id, updates) {
     updatedAt: now
   };
 
-  saveThoughts(thoughts);
+  setActiveThoughts(thoughts);
+
+  if (currentMode === 'cloud' && cloudUserId) {
+    const db = getDb();
+    if (db) {
+      db.collection('users').doc(cloudUserId).collection('thoughts').doc(id).update({
+        ...updates,
+        updatedAt: now
+      }).catch(e => console.error('Failed to update in cloud:', e));
+    }
+  }
+
   return thoughts[index];
 }
 
 // Delete a thought
 export function deleteThought(id) {
-  let thoughts = loadThoughts();
+  let thoughts = getActiveThoughts();
   
   // Remove the thought
   thoughts = thoughts.filter(t => t.id !== id);
@@ -97,12 +189,27 @@ export function deleteThought(id) {
     connections: (t.connections || []).filter(c => c.targetId !== id)
   }));
 
-  saveThoughts(thoughts);
+  setActiveThoughts(thoughts);
+
+  if (currentMode === 'cloud' && cloudUserId) {
+    const db = getDb();
+    if (db) {
+      db.collection('users').doc(cloudUserId).collection('thoughts').doc(id).delete()
+        .catch(e => console.error('Failed to delete from cloud:', e));
+      
+      const batch = db.batch();
+      thoughts.forEach(t => {
+        const docRef = db.collection('users').doc(cloudUserId).collection('thoughts').doc(t.id);
+        batch.update(docRef, { connections: t.connections });
+      });
+      batch.commit().catch(e => console.error('Failed to update connections in cloud:', e));
+    }
+  }
 }
 
 // Add a connection between two thoughts
 export function addConnection(fromId, toId, strength = 0.5, reason = '') {
-  const thoughts = loadThoughts();
+  const thoughts = getActiveThoughts();
   const index = thoughts.findIndex(t => t.id === fromId);
   
   if (index === -1) return false;
@@ -119,8 +226,20 @@ export function addConnection(fromId, toId, strength = 0.5, reason = '') {
     thoughts[index].connections.push({ targetId: toId, strength, reason });
   }
   
-  thoughts[index].updatedAt = new Date().toISOString();
-  saveThoughts(thoughts);
+  const now = new Date().toISOString();
+  thoughts[index].updatedAt = now;
+  setActiveThoughts(thoughts);
+
+  if (currentMode === 'cloud' && cloudUserId) {
+    const db = getDb();
+    if (db) {
+      db.collection('users').doc(cloudUserId).collection('thoughts').doc(fromId).update({
+        connections: thoughts[index].connections,
+        updatedAt: now
+      }).catch(e => console.error('Failed to add connection in cloud:', e));
+    }
+  }
+
   return true;
 }
 
@@ -151,7 +270,7 @@ export function saveSetting(key, value) {
 // Export all data as JSON string
 export function exportData() {
   const data = {
-    thoughts: loadThoughts(),
+    thoughts: getActiveThoughts(),
     settings: getSettings(),
     exportDate: new Date().toISOString(),
     version: '1.0'
@@ -168,7 +287,20 @@ export function importData(jsonString) {
       return { success: false, error: 'Invalid data format' };
     }
     
-    saveThoughts(data.thoughts);
+    setActiveThoughts(data.thoughts);
+
+    if (currentMode === 'cloud' && cloudUserId) {
+      const db = getDb();
+      if (db) {
+        const batch = db.batch();
+        data.thoughts.forEach(t => {
+          const docRef = db.collection('users').doc(cloudUserId).collection('thoughts').doc(t.id);
+          batch.set(docRef, t);
+        });
+        batch.commit().catch(e => console.error('Failed to import to cloud:', e));
+      }
+    }
+
     if (data.settings) {
       localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(data.settings));
     }
@@ -181,6 +313,6 @@ export function importData(jsonString) {
 
 // Get thought count
 export function getThoughtCount() {
-  const thoughts = loadThoughts();
+  const thoughts = getActiveThoughts();
   return thoughts.length;
 }

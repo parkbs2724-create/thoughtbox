@@ -17,6 +17,14 @@
         <h1 class="logo-text">ThoughtBox</h1>
       </div>
       <div class="header-actions">
+        <div id="authArea" style="display:flex;align-items:center;gap:8px;">
+          <button id="loginBtn" class="icon-btn" title="Google 로그인" style="font-size:0.85rem;width:auto;padding:0 12px;border:1px solid var(--surface-border);border-radius:var(--radius-full);">🔑 로그인</button>
+          <div id="userInfo" style="display:none;align-items:center;gap:8px;">
+            <img id="userAvatar" style="width:28px;height:28px;border-radius:50%;" src="" alt="">
+            <span id="userName" style="font-size:0.85rem;color:var(--text-secondary);"></span>
+            <button id="logoutBtn" class="icon-btn" title="로그아웃" style="font-size:0.75rem;width:auto;padding:0 8px;">로그아웃</button>
+          </div>
+        </div>
         <button id="themeToggle" class="icon-btn">☀️</button>
         <button id="settingsBtn" class="icon-btn">⚙️</button>
       </div>
@@ -46,6 +54,7 @@
         </div>
         <div class="thought-count-wrapper" style="padding: 1rem; text-align: center; color: var(--text-secondary); font-size: 0.9rem; border-top: 1px solid var(--border-color);">
           <span id="thoughtCount">0개의 생각</span>
+          <span id="syncStatus" style="font-size:0.75rem;margin-left:8px;"></span>
         </div>
       </aside>
 
@@ -101,6 +110,13 @@
         <button class="modal-close" data-modal="settingsModal">✕</button>
       </div>
       <div class="modal-body">
+        <div class="setting-group">
+          <label style="display:block;margin-bottom:0.5rem;">🔥 Firebase 설정 <span style="font-size:0.8rem;color:var(--text-tertiary);">(기기 간 동기화)</span></label>
+          <textarea id="firebaseConfigInput" rows="6" placeholder='{"apiKey":"...","authDomain":"...","projectId":"..."}' style="width:100%;padding:0.5rem;border:1px solid var(--surface-border);border-radius:4px;background:var(--surface-color);color:var(--text-primary);font-family:monospace;font-size:0.8rem;resize:vertical;"></textarea>
+          <p class="setting-help" style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-secondary);">Firebase Console에서 복사한 설정을 붙여넣으세요</p>
+          <button id="saveFirebaseConfigBtn" style="margin-top:0.5rem;padding:0.4rem 1rem;border-radius:4px;background:var(--accent-primary);color:white;border:none;cursor:pointer;font-size:0.85rem;">Firebase 설정 저장</button>
+        </div>
+        <hr style="border:none;border-top:1px solid var(--surface-border);margin:1.5rem 0;">
         <div class="setting-group">
           <label>OpenAI API Key</label>
           <div class="api-key-input" style="display: flex; gap: 0.5rem; align-items: center;">
@@ -187,6 +203,9 @@
     </style>
   </div>
 
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script type="module" src="js/app.js"></script>
 </body>
 </html>
