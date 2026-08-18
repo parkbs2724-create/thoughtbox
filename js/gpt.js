@@ -104,7 +104,7 @@ async function callGPT(systemPrompt, userMessage) {
   
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.error?.message || \`API Error: \${response.status}\`);
+    throw new Error(error.error?.message || `API Error: ${response.status}`);
   }
   
   const data = await response.json();

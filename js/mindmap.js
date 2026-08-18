@@ -126,7 +126,7 @@ export function addNode(thought) {
   
   const nodeData = {
     id: thought.id,
-    label: \`\${catInfo.emoji} \${labelText}\`,
+    label: `${catInfo.emoji} ${labelText}`,
     title: thought.content,
     color: {
       background: colors.background,
@@ -151,12 +151,12 @@ export function addNode(thought) {
 
 export function addEdge(fromId, toId, strength = 0.5, reason = '') {
   if (!edges) return;
-  const edgeId = \`\${fromId}_\${toId}\`;
+  const edgeId = `${fromId}_${toId}`;
   const width = 1 + (strength * 4);
   const opacity = Math.max(0.2, strength);
   
   const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
-  const baseColor = isDark ? \`rgba(148, 163, 184, \${opacity})\` : \`rgba(100, 116, 139, \${opacity})\`;
+  const baseColor = isDark ? `rgba(148, 163, 184, ${opacity})` : `rgba(100, 116, 139, ${opacity})`;
   
   const edgeData = {
     id: edgeId,
