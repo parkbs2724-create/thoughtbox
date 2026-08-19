@@ -944,9 +944,11 @@ body {
 
 @media (max-width: 1024px) {
   .sidebar {
+    width: 280px;
     position: absolute;
     transform: translateX(-100%);
     box-shadow: var(--shadow-lg);
+    z-index: 50;
   }
   
   .sidebar.open {
@@ -960,9 +962,79 @@ body {
 }
 
 @media (max-width: 768px) {
+  html, body {
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .app-container {
+    min-height: 100vh;
+    height: auto;
+  }
+
+  /* ===== Header Mobile ===== */
+  .app-header {
+    height: auto;
+    min-height: 48px;
+    padding: 8px 12px;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .logo-container {
+    font-size: 1rem;
+    gap: 6px;
+  }
+
+  .logo-icon {
+    font-size: 1.2rem;
+  }
+
+  .header-actions {
+    gap: 4px;
+  }
+
+  #authArea {
+    gap: 4px !important;
+  }
+
+  #authArea #loginBtn {
+    font-size: 0.75rem !important;
+    padding: 0 8px !important;
+    height: 32px;
+  }
+
+  #authArea #userInfo {
+    gap: 4px !important;
+  }
+
+  #authArea #userAvatar {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  #authArea #userName {
+    display: none !important;
+  }
+
+  #authArea #logoutBtn {
+    font-size: 0.65rem !important;
+    padding: 0 6px !important;
+    height: 28px;
+  }
+
+  .icon-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+
+  /* ===== Main Layout Mobile ===== */
   .app-main {
     flex-direction: column;
-    height: calc(100vh - var(--header-height) - 60px);
+    height: auto;
+    min-height: calc(100vh - 48px - 60px);
+    overflow: visible;
   }
 
   .sidebar {
@@ -971,6 +1043,9 @@ body {
     transform: none;
     border-right: none;
     display: none;
+    height: auto;
+    max-height: calc(100vh - 48px - 80px - 60px);
+    overflow-y: auto;
   }
 
   .sidebar.active-tab {
@@ -979,6 +1054,8 @@ body {
 
   .main-content {
     display: none;
+    flex: 1;
+    min-height: 300px;
   }
   
   .main-content.active-tab {
@@ -990,17 +1067,42 @@ body {
     border-radius: 0;
     border: none;
     border-top: 1px solid var(--surface-border);
+    min-height: 300px;
   }
 
+  /* ===== Input Bar Mobile ===== */
   .input-bar-wrapper {
+    position: fixed;
     bottom: 60px;
+    left: 0;
+    right: 0;
+    z-index: 90;
   }
   
   .input-bar {
     border-radius: var(--radius-md);
-    margin: 0 var(--spacing-sm);
+    margin: 0 8px 8px;
+    padding: 8px;
+    gap: 6px;
   }
 
+  .thought-textarea {
+    font-size: 14px;
+    min-height: 36px;
+  }
+
+  .category-select {
+    font-size: 12px;
+    padding: 4px 6px;
+  }
+
+  .send-btn {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+  }
+
+  /* ===== Mobile Nav Tabs ===== */
   .mobile-nav-tabs {
     display: flex;
     position: fixed;
@@ -1010,6 +1112,7 @@ body {
     height: 60px;
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border-top: 1px solid var(--surface-border);
     z-index: 100;
   }
@@ -1020,12 +1123,14 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 3px;
     background: transparent;
     border: none;
     color: var(--text-tertiary);
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 500;
+    cursor: pointer;
+    transition: color var(--transition-fast);
   }
 
   .tab-btn.active {
@@ -1033,6 +1138,74 @@ body {
   }
 
   .tab-icon {
-    font-size: 1.25rem;
+    font-size: 1.2rem;
+  }
+
+  /* ===== Cards Mobile ===== */
+  .thought-card {
+    padding: 12px;
+    margin: 0 8px 8px;
+  }
+
+  .card-header {
+    font-size: 0.8rem;
+  }
+
+  .card-content {
+    font-size: 0.9rem;
+  }
+
+  /* ===== Search & Filters Mobile ===== */
+  .sidebar-header {
+    padding: 8px;
+  }
+
+  .search-input {
+    font-size: 14px;
+    height: 36px;
+  }
+
+  .filter-tags {
+    gap: 4px;
+    padding: 0 8px 8px;
+  }
+
+  .filter-tag {
+    font-size: 0.7rem;
+    padding: 4px 8px;
+  }
+
+  /* ===== Modals Mobile ===== */
+  .modal {
+    width: 95vw;
+    max-width: 95vw;
+    max-height: 85vh;
+    margin: auto;
+  }
+
+  .modal-body {
+    padding: 12px;
+  }
+
+  /* ===== View Toggle Mobile ===== */
+  .mindmap-header {
+    padding: 8px;
+  }
+
+  .view-toggle-btn {
+    font-size: 0.75rem;
+    padding: 4px 12px;
   }
 }
+
+@media (max-width: 380px) {
+  .logo-text {
+    font-size: 0.9rem;
+  }
+
+  .filter-tag {
+    font-size: 0.65rem;
+    padding: 3px 6px;
+  }
+}
+

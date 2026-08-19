@@ -44,6 +44,12 @@ function init() {
   if (fbConfig && els.firebaseConfigInput) {
     els.firebaseConfigInput.value = JSON.stringify(fbConfig, null, 2);
   }
+
+  // Mobile: show sidebar by default
+  if (window.innerWidth <= 768) {
+    if (els.sidebar) els.sidebar.classList.add('active-tab');
+    if (els.mainContent) els.mainContent.classList.remove('active-tab');
+  }
   
   renderAll();
 }
