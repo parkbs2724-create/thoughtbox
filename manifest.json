@@ -1,0 +1,25 @@
+{
+  "name": "ThoughtBox - 생각박스",
+  "short_name": "ThoughtBox",
+  "description": "AI 기반 생각 관리 & 마인드맵 도구",
+  "start_url": "/thoughtbox/",
+  "scope": "/thoughtbox/",
+  "display": "standalone",
+  "background_color": "#0a0e27",
+  "theme_color": "#667eea",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
